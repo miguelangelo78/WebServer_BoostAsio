@@ -28,6 +28,10 @@ void ClientConnection::OnConnect(const std::string & host, uint16_t port) {
 	Send(request);
 }
 
+void ClientConnection::OnDisconnect() {
+
+}
+
 void ClientConnection::OnSend(const std::vector< uint8_t > & buffer) {
 	TLOCK;
 	std::cout << "[" << __FUNCTION__ << "] " << buffer.size() << " bytes" << std::endl;

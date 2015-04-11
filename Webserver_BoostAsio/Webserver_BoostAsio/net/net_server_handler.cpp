@@ -3,6 +3,11 @@
 
 boost::mutex global_lock;
 
+#include <fstream>
+
+bool connected = false;
+bool just_disconnected = false;
+
 std::string buffer_to_str(std::vector<uint8_t> buff) {
 	std::string str(buff.begin(), buff.end());
 	return str;
@@ -14,14 +19,38 @@ std::vector<uint8_t> str_to_buffer(std::string str) {
 	return buffer;
 }
 
+std::string file_getwhole(std::string filepath) {
+	std::string output = "";
+	
+	try {
+		std::string buff;
+		std::ifstream file(filepath);
+		if (file.is_open()) {
+
+			while (std::getline(file, buff))
+				output += buff+"\r\n";
+
+			file.close();
+		}
+		else throw std::runtime_error("Could not open file '" + filepath + "'");
+	}
+	catch (std::exception& e) {
+		std::cerr << "\nFile exception: " << e.what() << std::endl;
+	}
+
+	if (output.empty()) return "<NULL>";
+	else return output;
+}
+
+///////////////////////////////////////////////////////////////
+
 // Server events:
 
 // Server Connection:
 void ServerConnection::OnAccept(const std::string & host, uint16_t port) {
 	TLOCK;
-	std::cout << "[" << __FUNCTION__ << "] " << host << ":" << port << std::endl;
+	std::cout << "Accepted: Connected to host " << host << " through port " << port << std::endl;
 	TULOCK;
-
 	// Start the next receive
 	Recv();
 }
@@ -31,41 +60,39 @@ void ServerConnection::OnConnect(const std::string & host, uint16_t port) {
 	std::cout << "[" << __FUNCTION__ << "] " << host << ":" << port << std::endl;
 	TULOCK;
 
+	connected = true;
+
 	// Start the next receive
 	Recv();
 }
 
-void ServerConnection::OnSend(const std::vector< uint8_t > & buffer) {
+void ServerConnection::OnDisconnect() {
+	std::cout << ">> !Connection with client ended!" << std::endl;
+	connected = false;
+	just_disconnected = true;
+}
+
+void ServerConnection::OnSend(const std::vector<uint8_t> & buffer) {
 	TLOCK;
 	std::cout << "Sent: " << buffer_to_str(buffer) << std::endl;
 	TULOCK;
+
+	// After the client received the html file:
+	Disconnect();
 }
 
 void ServerConnection::OnRecv(std::vector<uint8_t> & buffer) {
-	TLOCK;
-	TULOCK;
-
+	
 	std::cout << "Request: " << buffer_to_str(buffer)<<std::endl;
 
-	std::vector<uint8_t> buff = str_to_buffer("HTTP/1.1 302 Found\r\n"
-		"Cache-Control: private\r\n"
-		"Content - Type : text / html; charset = UTF - 8\r\n"
-		"Location: http://www.google.co.uk/?gfe_rd=cr&ei=9oQoVZKUAYLj8wez24GQCA\r\n"
-		"Content - Length : 261\r\n"
-		"Date : Sat, 11 Apr 2015 02 : 20 : 38 GMT\r\n"
-		"Server : GFE / 2.0\r\n"
-		"Alternate - Protocol : 80 : quic, p = 0.5\r\n\r\n"
-		"<HTML><HEAD><meta http - equiv = \"content-type\" content = \"text/html;charset=utf-8\">\r\n"
-		"<TITLE>302 Moved< / TITLE>< / HEAD><BODY>\r\n"
-		"<H1>302 Moved< / H1\r>\n"
-		"The document has moved\r\n"
-		"<A HREF = \"http://www.google.co.uk/?gfe_rd=cr&amp;ei=9oQoVZKUAYLj8wez24GQCA\">here< / A>.\r\n"
-		"< / BODY>< / HTML>");
+	std::vector<uint8_t> reply = str_to_buffer(
+		"HTTP/1.1 200 OK\r\n"
+		"Content-Type: text/html\r\n\r\n" + file_getwhole("..\\web\\index.html"));
 
 	// Start the next receive
 	Recv();
-
-	Send(buff);
+	
+	Send(reply);
 }
 
 void ServerConnection::OnTimer(const boost::posix_time::time_duration & delta) {
@@ -102,10 +129,18 @@ void ServerAcceptor::OnError(const boost::system::error_code & error) {
 }
 
 // Server Handler:
-void NetServer::server_work() {
+int NetServer::server_work() {
+	std::cout << "\nListening through port " << port << " . . ." << std::endl;
+
+	// Connected: 
 	while (1) {
 		updateHive();
 
-		if (_kbhit()) break;
+		if (just_disconnected) {
+			just_disconnected = false;
+			break;
+		}
 	}
+
+	return 1;
 }

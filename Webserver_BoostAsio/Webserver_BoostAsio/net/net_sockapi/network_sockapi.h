@@ -69,6 +69,8 @@ private:
 	// host.
 	virtual void OnConnect(const std::string & host, uint16_t port) = 0;
 
+	virtual void OnDisconnect() = 0;
+
 	// Called when data has been sent by the connection.
 	virtual void OnSend(const std::vector< uint8_t > & buffer) = 0;
 

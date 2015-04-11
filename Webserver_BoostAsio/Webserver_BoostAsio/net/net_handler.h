@@ -13,6 +13,7 @@ class ServerConnection : public Connection
 private:
 	void OnAccept(const std::string & host, uint16_t port);
 	void OnConnect(const std::string & host, uint16_t port);
+	void OnDisconnect();
 	void OnSend(const std::vector< uint8_t > & buffer);
 	void OnRecv(std::vector< uint8_t > & buffer);
 	void OnTimer(const boost::posix_time::time_duration & delta);
@@ -39,6 +40,7 @@ class ClientConnection : public Connection {
 private:
 	void OnAccept(const std::string & host, uint16_t port);
 	void OnConnect(const std::string & host, uint16_t port);
+	void OnDisconnect();
 	void OnSend(const std::vector< uint8_t > & buffer);
 	void OnRecv(std::vector< uint8_t > & buffer);
 	void OnTimer(const boost::posix_time::time_duration & delta);
@@ -63,10 +65,14 @@ typedef boost::shared_ptr<ClientConnection> sptr_cconn_t;
 // Server handler:
 class NetServer {
 public:
-	NetServer(std::string host, uint16_t port) :hive(NEW_HIVE), acceptor(NEW_SACCEPTOR(hive)), conn(NEW_SCONNECTION(hive)) {
-		acceptor->Listen(host, port);
-		acceptor->Accept(conn);
-		server_work();
+	NetServer(std::string host, uint16_t port) :port(port), host(host){
+		int server_status = 1;
+
+		while (server_status) {
+			init_hive();
+			server_status = server_work();
+			hive->Stop();
+		}
 	}
 	~NetServer() {
 		hive->Stop();
@@ -76,12 +82,26 @@ private:
 	sptr_hive_t hive;
 	sptr_sacceptor_t acceptor;
 	sptr_sconn_t conn;
+	std::string host;
+	int port;
+	
+	void init_hive() {
+		hive = sptr_hive_t(NEW_HIVE);
+		acceptor = sptr_sacceptor_t(NEW_SACCEPTOR(hive));
+		conn = sptr_sconn_t(NEW_SCONNECTION(hive));
+		listen_and_accept();
+	}
+
+	void listen_and_accept() {
+		acceptor->Listen(host, port);
+		acceptor->Accept(conn);
+	}
 
 	void updateHive() {
 		hive->Poll();
 		Sleep(1);
 	}
-	void server_work();
+	int server_work();
 };
 
 // Client handler:

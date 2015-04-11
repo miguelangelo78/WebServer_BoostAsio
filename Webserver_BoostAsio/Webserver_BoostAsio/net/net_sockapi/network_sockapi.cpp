@@ -230,6 +230,8 @@ void Connection::StartError(const boost::system::error_code & error)
 		m_timer.cancel(ec);
 		OnError(error);
 	}
+	if (error == boost::asio::error::connection_reset)
+		OnDisconnect();
 }
 
 void Connection::HandleConnect(const boost::system::error_code & error)
