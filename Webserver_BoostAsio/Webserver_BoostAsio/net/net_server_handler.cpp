@@ -87,7 +87,7 @@ void ServerConnection::OnRecv(std::vector<uint8_t> & buffer) {
 
 	std::vector<uint8_t> reply = str_to_buffer(
 		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: text/html\r\n\r\n" + file_getwhole("..\\web\\index.html"));
+		"Content-Type: text/html\r\n\r\n" + file_getwhole("web\\index.html"));
 
 	// Start the next receive
 	Recv();

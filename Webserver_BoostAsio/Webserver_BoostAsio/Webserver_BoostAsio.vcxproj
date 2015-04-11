@@ -96,6 +96,9 @@
     </ClCompile>
     <ClCompile Include="Webserver_BoostAsio.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="web\index.html" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
